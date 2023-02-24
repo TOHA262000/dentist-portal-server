@@ -18,9 +18,29 @@ async function run() {
         const appointmentOptionCollection = client.db("dentistPortal").collection("appointmentOptions")
         const bookingsCollection = client.db("dentistPortal").collection("bookings")
         app.get('/appointmentOptions',async(req,res)=>{
+            const date = req.query.date;
             const query = {};
             const options = await appointmentOptionCollection.find(query).toArray();
+
+            // Show all the booking for probided date
+            const bookingQuery = {appointmentDate:date}
+            const alreadyBooked = await bookingsCollection.find(bookingQuery).toArray();
+            
+            // At first take one option at a time
+            options.map(option=>{
+                // Then find the all booking for this option 
+                const optionBookings = alreadyBooked.filter(book=>book.treatment===option.name);
+                //Find the all slots from that bookings
+                const bookingSlots = optionBookings.map(book=>book.slot);
+                
+                // the find the remaining slot 
+                const remainingSlots = option.slots.filter(slot=>!bookingSlots.includes(slot));
+                // assign the remaing slot to the option
+                option.slots = remainingSlots;
+            })
             res.send(options);
+
+
         })
 
 
