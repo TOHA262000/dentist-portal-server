@@ -59,6 +59,16 @@ async function run() {
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
         })
+        app.get('/bookings',async(req,res)=>{
+            const date = req.query.formatedDate;
+            const email = req.query.email;
+            const query = {
+                appointmentDate:date,
+                email:email
+            }
+            const bookings = await bookingsCollection.find(query).toArray();
+            res.send(bookings);
+        })
         /***
          * bookings
          * app.get('/bookings')
