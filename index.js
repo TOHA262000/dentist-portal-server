@@ -17,24 +17,29 @@ async function run() {
     try {
         const appointmentOptionCollection = client.db("dentistPortal").collection("appointmentOptions")
         const bookingsCollection = client.db("dentistPortal").collection("bookings")
-        app.get('/appointmentOptions',async(req,res)=>{
+        const usersCollection = client.db("dentistPortal").collection("users")
+
+
+
+
+        app.get('/appointmentOptions', async (req, res) => {
             const date = req.query.date;
             const query = {};
             const options = await appointmentOptionCollection.find(query).toArray();
 
             // Show all the booking for probided date
-            const bookingQuery = {appointmentDate:date}
+            const bookingQuery = { appointmentDate: date }
             const alreadyBooked = await bookingsCollection.find(bookingQuery).toArray();
-            
+
             // At first take one option at a time
-            options.map(option=>{
+            options.map(option => {
                 // Then find the all booking for this option 
-                const optionBookings = alreadyBooked.filter(book=>book.treatment===option.name);
+                const optionBookings = alreadyBooked.filter(book => book.treatment === option.name);
                 //Find the all slots from that bookings
-                const bookingSlots = optionBookings.map(book=>book.slot);
-                
+                const bookingSlots = optionBookings.map(book => book.slot);
+
                 // the find the remaining slot 
-                const remainingSlots = option.slots.filter(slot=>!bookingSlots.includes(slot));
+                const remainingSlots = option.slots.filter(slot => !bookingSlots.includes(slot));
                 // assign the remaing slot to the option
                 option.slots = remainingSlots;
             })
@@ -44,31 +49,42 @@ async function run() {
         })
 
 
-        app.post('/bookings',async(req,res)=>{
+        app.post('/bookings', async (req, res) => {
             const booking = req.body;
             const query = {
-                appointmentDate:booking.appointmentDate,
-                email:booking.email,
-                treatment:booking.treatment
+                appointmentDate: booking.appointmentDate,
+                email: booking.email,
+                treatment: booking.treatment
             }
             const queryBooking = await bookingsCollection.find(query).toArray();
-            if(queryBooking.length){
+            if (queryBooking.length) {
                 const message = `You already have ${booking.treatment} booking `
-                return res.send({message})
+                return res.send({ message })
             }
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
         })
-        app.get('/bookings',async(req,res)=>{
+        app.get('/bookings', async (req, res) => {
             const date = req.query.formatedDate;
             const email = req.query.email;
             const query = {
-                appointmentDate:date,
-                email:email
+                appointmentDate: date,
+                email: email
             }
             const bookings = await bookingsCollection.find(query).toArray();
             res.send(bookings);
         })
+        app.get('/bookings/all', async (req, res) => {
+            const email = req.query.email;
+            const bookings = await bookingsCollection.find({ email }).toArray();
+            res.send(bookings);
+        })
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
         /***
          * bookings
          * app.get('/bookings')
@@ -76,9 +92,9 @@ async function run() {
          * app.post('/bookings')
          * app.patch('/bookings/id')
          * app.delete('/bookings/id')
-         * */ 
-        
-        
+         * */
+
+
     }
     finally {
 
