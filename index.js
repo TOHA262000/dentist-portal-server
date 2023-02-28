@@ -17,6 +17,22 @@ app.use(cookieParser());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.04tujxe.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyJWT(req, res, next) {
+    // Get httpOnly cookie that browser send Atuometic
+    const token = req.cookies.jwt;
+    console.log(token);
+    if (!token) {
+        return res.status(401).send('unauthorized access')
+    }
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbiden access' })
+        }
+        req.decoded = decoded;
+        next();
+    });
+}
+
 async function run() {
     try {
         const appointmentOptionCollection = client.db("dentistPortal").collection("appointmentOptions")
@@ -68,11 +84,13 @@ async function run() {
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
         })
-        app.get('/bookings', async (req, res) => {
+        app.get('/bookings', verifyJWT, async (req, res) => {
 
-            // Get httpOnly cookie that browser send Atuometic
-            const token = req.cookies.jwt;
-            console.log(token);
+            // Verify the user email with token email
+            const decodedEmail = req.decoded.email;
+            if (req.query.email !== decodedEmail) {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
 
 
             const date = req.query.formatedDate;
@@ -97,26 +115,26 @@ async function run() {
 
 
         // Get jwt token for valid user
-        app.get('/jwt',async(req,res)=>{
+        app.get('/jwt', async (req, res) => {
             const email = req.query.email;
-            const query = {email:email};
-            const user  = await usersCollection.findOne(query);
-            if(user){
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            if (user) {
 
                 // Here create jwt token
-                const token = jwt.sign({email},process.env.ACCESS_TOKEN,{expiresIn: '1h'});
-                
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+
                 // This is for set token in httpOnly Cookie
                 res.cookie('jwt', token, {
-                    sameSite: 'none', 
-                    httpOnly:true,
+                    sameSite: 'none',
+                    httpOnly: true,
                     secure: true, // Enable this option when using HTTPS
                     maxAge: 60 * 60 * 1000 // Set cookie expiration time to 1 hour
                 });
-                res.send({accessToken:token})
-                return  
+                res.send({ accessToken: token })
+                return
             }
-            res.status(404).send({accessToken:''})
+            res.status(404).send({ accessToken: '' })
         })
 
 
