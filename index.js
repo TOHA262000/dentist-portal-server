@@ -20,7 +20,6 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 function verifyJWT(req, res, next) {
     // Get httpOnly cookie that browser send Atuometic
     const token = req.cookies.jwt;
-    console.log(token);
     if (!token) {
         return res.status(401).send('unauthorized access')
     }
@@ -102,17 +101,29 @@ async function run() {
             const bookings = await bookingsCollection.find(query).toArray();
             res.send(bookings);
         })
-        app.get('/bookings/all', async (req, res) => {
+        app.get('/bookings/all',verifyJWT, async (req, res) => {
+
+            // Verify the user email with token email
+            const decodedEmail = req.decoded.email;
+            if (req.query.email !== decodedEmail) {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
+
             const email = req.query.email;
             const bookings = await bookingsCollection.find({ email }).toArray();
             res.send(bookings);
         })
-        app.post('/users', async (req, res) => {
-            const user = req.body;
-            const result = await usersCollection.insertOne(user);
-            res.send(result);
-        })
 
+        app.post('/users', async (req, res) => {
+            const { email } = req.body;
+            const isAlreadyExist = await usersCollection.findOne({ email });
+            if (isAlreadyExist) {
+              return  res.send({message:'Google User'})
+            }
+            const result = await usersCollection.insertOne(req.body);
+            res.send(result);
+          });
+          
 
         // Get jwt token for valid user
         app.get('/jwt', async (req, res) => {
@@ -154,7 +165,7 @@ async function run() {
 
     }
 }
-run().catch(console.log);
+run().catch(err=>console.log(err));
 app.get('/', async (req, res) => {
     res.send("Dentist portal running")
 })
