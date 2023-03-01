@@ -3,7 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 const port = process.env.PORT || 5000;
@@ -21,7 +21,7 @@ function verifyJWT(req, res, next) {
     // Get httpOnly cookie that browser send Atuometic
     const token = req.cookies.jwt;
     if (!token) {
-        return res.status(401).send('unauthorized access')
+        return res.status(401).send({message:'unauthorized access'})
     }
     jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
         if (err) {
@@ -101,7 +101,7 @@ async function run() {
             const bookings = await bookingsCollection.find(query).toArray();
             res.send(bookings);
         })
-        app.get('/bookings/all',verifyJWT, async (req, res) => {
+        app.get('/bookings/all', verifyJWT, async (req, res) => {
 
             // Verify the user email with token email
             const decodedEmail = req.decoded.email;
@@ -118,12 +118,56 @@ async function run() {
             const { email } = req.body;
             const isAlreadyExist = await usersCollection.findOne({ email });
             if (isAlreadyExist) {
-              return  res.send({message:'Google User'})
+                return res.send({ message: 'Google User' })
             }
             const result = await usersCollection.insertOne(req.body);
             res.send(result);
-          });
-          
+        });
+
+        app.get('/users',verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail }) 
+            if(user?.role !== 'admin'){
+                return res.status(403).send({message:'Forbidden Access'})
+            }
+            const query = {};
+            const users = await usersCollection.find(query).toArray();
+            res.send(users);
+        });
+        app.get('/user/admin/:email',async(req,res)=>{
+            const email = req.params.email;
+            const query = {
+                email
+            }
+            const user = await usersCollection.findOne(query);
+            const isAdmin = user?.role === 'admin';
+            res.send(isAdmin);
+        });
+
+        app.put('/users/admin/:id', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail })
+            if (user) {
+                
+                if (user.role === 'admin') {
+                    const id = req.params.id;
+                    const filter = { _id: new ObjectId(id) }
+                    const options = { upsert: true };
+                    const updateDoc = {
+                        $set: {
+                            role: 'admin'
+                        }
+                    }
+                    const result = await usersCollection.updateOne(filter, updateDoc, options);
+                    res.send(result);
+                }
+            }
+            else{
+                res.status(403).send({message:'Forbidden Access'});
+            }
+
+        });
+
 
         // Get jwt token for valid user
         app.get('/jwt', async (req, res) => {
@@ -165,7 +209,7 @@ async function run() {
 
     }
 }
-run().catch(err=>console.log(err));
+run().catch(err => console.log(err));
 app.get('/', async (req, res) => {
     res.send("Dentist portal running")
 })
