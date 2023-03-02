@@ -129,7 +129,7 @@ async function run() {
             const decodedEmail = req.decoded.email;
             const user = await usersCollection.findOne({ email: decodedEmail }) 
             if(user?.role !== 'admin'){
-                return res.sen([]);
+                return res.send([]);
             }
             const query = {};
             const users = await usersCollection.find(query).toArray();
@@ -168,6 +168,18 @@ async function run() {
             }
 
         });
+        app.delete('/users/:id',verifyJWT,async(req,res)=>{
+            // verify Admin
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail }) 
+            if(user?.role !== 'admin'){
+                return res.status(403).send({message:'Forbidden Access'});
+            }
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)};
+            const result = await usersCollection.deleteOne(query)
+            res.send(result);
+        });
 
 
         // Get jwt token for valid user
@@ -203,10 +215,33 @@ async function run() {
             const decodedEmail = req.decoded.email;
             const user = await usersCollection.findOne({ email: decodedEmail }) 
             if(user?.role !== 'admin'){
-                return res.sen([]);
+                return res.status(403).send({message:'Forbidden Access'});
             }
             const doctor = req.body;
             const result = await doctorsCollection.insertOne(doctor)
+            res.send(result);
+        });
+        app.get('/doctors',verifyJWT,async(req,res)=>{
+            // verify Admin
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail }) 
+            if(user?.role !== 'admin'){
+                return res.send([]);
+            }
+            const query = {}
+            const doctors = await doctorsCollection.find(query).toArray();
+            res.send(doctors);
+        });
+        app.delete('/doctors/:id',verifyJWT,async(req,res)=>{
+            // verify Admin
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail }) 
+            if(user?.role !== 'admin'){
+                return res.status(403).send({message:'Forbidden'});
+            }
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await doctorsCollection.deleteOne(query)
             res.send(result);
         })
 
