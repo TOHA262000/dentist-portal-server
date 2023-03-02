@@ -36,7 +36,8 @@ async function run() {
     try {
         const appointmentOptionCollection = client.db("dentistPortal").collection("appointmentOptions")
         const bookingsCollection = client.db("dentistPortal").collection("bookings")
-        const usersCollection = client.db("dentistPortal").collection("users")
+        const usersCollection = client.db("dentistPortal").collection("users");
+        const doctorsCollection = client.db("dentistPortal").collection("doctors");
 
 
 
@@ -128,7 +129,7 @@ async function run() {
             const decodedEmail = req.decoded.email;
             const user = await usersCollection.findOne({ email: decodedEmail }) 
             if(user?.role !== 'admin'){
-                return res.status(403).send({message:'Forbidden Access'})
+                return res.sen([]);
             }
             const query = {};
             const users = await usersCollection.find(query).toArray();
@@ -190,8 +191,24 @@ async function run() {
                 return
             }
             res.status(404).send({ accessToken: '' })
-        })
+        });
+        app.get('/appointmenSpecialty',async(req,res)=>{
+            const query = {}
+            const result = await appointmentOptionCollection.find(query).project({name:1}).toArray();
+            res.send(result);
+        });
+        app.post('/doctors',verifyJWT,async(req,res)=>{
 
+            // verify Admin
+            const decodedEmail = req.decoded.email;
+            const user = await usersCollection.findOne({ email: decodedEmail }) 
+            if(user?.role !== 'admin'){
+                return res.sen([]);
+            }
+            const doctor = req.body;
+            const result = await doctorsCollection.insertOne(doctor)
+            res.send(result);
+        })
 
 
         /***
