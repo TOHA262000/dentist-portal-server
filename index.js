@@ -110,7 +110,13 @@ async function run() {
             }
             const bookings = await bookingsCollection.find(query).toArray();
             res.send(bookings);
-        })
+        });
+        app.get('/booking/:id',async(req,res)=>{
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const booking = await bookingsCollection.findOne(query)
+            res.send(booking);
+        });
         app.get('/bookings/all', verifyJWT, async (req, res) => {
 
             // Verify the user email with token email
@@ -162,7 +168,20 @@ async function run() {
             res.send(result);
         });
 
-      
+        //Temporary api for update price in appointment option
+        // app.get('/price', async (req, res) => {
+        //     const filter = {};
+        //     const options = { upsert: true };
+        //     const updateDoc = {
+        //         $set: {
+        //             price: 99
+        //         }
+        //     }
+        //     const result = await appointmentOptionCollection.updateMany(filter, updateDoc, options);
+        //     res.send(result)
+
+        // })
+
 
         app.delete('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id
@@ -201,6 +220,7 @@ async function run() {
             const result = await appointmentOptionCollection.find(query).project({ name: 1 }).toArray();
             res.send(result);
         });
+
         app.post('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorsCollection.insertOne(doctor)
