@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-
+const stripe = require("stripe")(process.env.SECRET_KEY_STRIPE);
 const port = process.env.PORT || 5000;
 const app = express();
 
@@ -111,9 +111,9 @@ async function run() {
             const bookings = await bookingsCollection.find(query).toArray();
             res.send(bookings);
         });
-        app.get('/booking/:id',async(req,res)=>{
+        app.get('/booking/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const booking = await bookingsCollection.findOne(query)
             res.send(booking);
         });
@@ -183,6 +183,7 @@ async function run() {
         // })
 
 
+
         app.delete('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id
             const query = { _id: new ObjectId(id) };
@@ -214,6 +215,22 @@ async function run() {
             res.status(404).send({ accessToken: '' })
         });
 
+        // Payment method in stripe 
+        app.post('/create-payment-intent', async (req, res) => {
+            const booking = req.body;
+            const price = booking.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                "payment_method_types": [
+                    "card"
+                ],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
 
         app.get('/appointmenSpecialty', async (req, res) => {
             const query = {}
